@@ -73,6 +73,45 @@ class Generator(Model):
 
         return x
 
+class Discriminator(Model):
+    def __init__(self, num_uniques):
+        super(Discriminator, self).__init__()
+
+        self.t1 = Embedding(num_uniques, 128)
+        self.t2 = GRU(512, return_sequences=True)
+        self.t3 = GRU(512, return_sequences=True)
+        self.t4 = Dense(256, activation="relu")
+        self.t5 = Flatten()
+
+        self.g1 = Dense(256, activation="relu")
+        self.g2 = Flatten()
+        
+        self.fc1 = Concatenate()
+        self.fc2 = Dense(512, activation="relu")
+        self.fc3 = Dense(128, activation="relu")
+        
+        self.out = Dense(2, activation="softmax")
+
+    def call(self, inp):
+        text, group = inp
+
+        t = self.t1(text)
+        t = self.t2(t)
+        t = self.t3(t)
+        t = self.t4(t)
+        t = self.t5(t)
+        
+        g = self.g1(group)
+        g = self.g2(g)
+
+        x = self.fc1([t, g])
+        x = self.fc2(x)
+        x = self.fc3(x)
+
+        x = self.out(x)
+
+        return x
+
     
 
 def test_encoder():
@@ -90,6 +129,12 @@ def test_generator():
     thing = tf.cast(thing, tf.int64)
     print(thing) 
     print(encoder.decode(thing))
+
+def test_discriminator():
+    gen = Generator()
+    text = gen.predict(np.array([[0,1]]))
+    dis = Discriminator(500)
+    print(dis.predict([text, np.array([[0,1]])]))
 
 
     

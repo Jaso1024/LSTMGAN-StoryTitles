@@ -36,3 +36,16 @@ class Encoder():
     def decode(self, tokens):
         return self.tokenizer.detokenize(tokens)    
 
+
+    
+
+def test_encoder():
+    text = "Hello my name is BERT I am an AI used for NLP"
+    encoder = Encoder(text)
+    tokens = encoder.tokenizer.tokenize("I am BERT")
+    print(tokens)
+    print(encoder.tokenizer.detokenize(tokens))
+
+
+
+    

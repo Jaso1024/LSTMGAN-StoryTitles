@@ -1,3 +1,4 @@
+import re
 import tensorflow as tf
 from tensorflow import keras
 from keras.models import Model
@@ -8,6 +9,7 @@ from keras.utils import pad_sequences
 from tensorflow.lookup import StaticVocabularyTable, KeyValueTensorInitializer
 import numpy as np
 import os
+from itertools import repeat
 
 
 class Encoder():
@@ -54,16 +56,16 @@ class Generator(Model):
     def __init__(self, maxlen):
         super(Generator, self).__init__()
 
-        self.n1 = Dense(1024, activation="relu")
-        self.n2 = Dense(1024, activation="relu")
+        self.n1 = Dense(256, activation="relu")
+        self.n2 = Dense(256, activation="relu")
         self.n3 = Flatten()
         
-        self.g1 = Dense(1024, activation="relu")
+        self.g1 = Dense(128, activation="relu")
         self.g2 = Flatten()
 
         self.fc1 = Concatenate()
-        self.fc2 = Dense(1024, activation="relu")
-        self.fc3 = Dense(1024, activation="relu")
+        self.fc2 = Dense(256, activation="relu")
+        self.fc3 = Dense(256, activation="relu")
 
         self.out = Dense(maxlen, activation="relu")
     
@@ -91,18 +93,18 @@ class Discriminator(Model):
     def __init__(self, num_uniques):
         super(Discriminator, self).__init__()
         
-        self.t1 = GRU(512, return_sequences=True)
-        self.t2 = GRU(512, return_sequences=True)
-        self.t3 = GRU(512)
-        self.t3 = Dense(1024, activation="relu")
+        self.t1 = GRU(256, return_sequences=True)
+        self.t2 = GRU(256, return_sequences=True)
+        self.t3 = GRU(256)
+        self.t3 = Dense(512, activation="relu")
         self.t4 = Flatten()
 
-        self.g1 = Dense(1024, activation="relu")
+        self.g1 = Dense(256, activation="relu")
         self.g2 = Flatten()
         
         self.fc1 = Concatenate()
-        self.fc2 = Dense(1024, activation="relu")
-        self.fc3 = Dense(1024, activation="relu")
+        self.fc2 = Dense(512, activation="relu")
+        self.fc3 = Dense(512, activation="relu")
         
         self.out = Dense(1, activation="sigmoid")
 
@@ -184,10 +186,12 @@ class GAN(Model):
 
         self.generator_gradients.append(generator_grad)
         self.discriminator_gradients.append(discriminator_grad)
-        if len(self.generator_gradients) > self.batch_size:
-            self.gen_opt.apply_gradients(zip(generator_grad, self.generator.trainable_variables))
-            self.discrim_opt.apply_gradients(zip(discriminator_grad, self.discriminator.trainable_variables))
-    
+
+        self.gen_opt.apply_gradients(zip(generator_grad, self.generator.trainable_variables))
+        self.discrim_opt.apply_gradients(zip(discriminator_grad, self.discriminator.trainable_variables))
+        self.generator_gradients = []
+        self.discriminator_gradients = []
+
     def train(self, fake_groups, real_groups, text_data, noises, epochs, ckpt_freq=10):
         for epoch in range(1, epochs+1):
             for fake_group, real_group, text, noise in zip(fake_groups, real_groups, text_data, noises):
@@ -196,6 +200,7 @@ class GAN(Model):
                 tokens = self.encoder.encode(text)
                 tokens = np.expand_dims(tokens, axis=0)
                 self.trainstep(fake_group, real_group, tokens, noise)
+                
 
             if epoch % ckpt_freq == 0:
                 self.ckpt.save(file_prefix=self.ckpt_prefix)

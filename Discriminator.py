@@ -21,7 +21,6 @@ class Discriminator(Model):
         self.flat = Flatten()
 
         self.l1 = GRU(256, return_sequences=True)
-        self.l2 = GRU(256, return_sequences=True)
         self.l3 = GRU(256)
 
         self.l4 = Dense(512, activation="relu")
@@ -31,11 +30,10 @@ class Discriminator(Model):
 
     def call(self, text):
         x = self.l1(text)
-        x = self.l2(x)
         x = self.l3(x)
 
         x = self.flat(x)
-        
+
         x = self.l4(x)
         x = self.l5(x)
         x = self.l6(x)

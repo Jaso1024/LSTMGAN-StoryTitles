@@ -27,27 +27,43 @@ class GAN(Model):
         self.generator = Generator(self.encoder.vocab_len, self.encoder.sequence_maxlen)
         self.discriminator = Discriminator()
 
-        self.gen_opt = Adam(1e-4)
-        self.discrim_opt = Adam(1e-4)
+        self.gen_opt = Adam(1e-5)
+        self.discrim_opt = Adam(1e-5)
+
+        self.generator.compile(optimizer=self.gen_opt)
+        self.discriminator.compile(optimizer=self.discrim_opt)
 
         self.ckpt, self.ckpt_prefix = self.get_checkpoint()
         self.generator_gradients = []
         self.discriminator_gradients = []
         self.batch_size = batch_size
 
+        print("Vocab length", self.encoder.vocab_len)
+
     def generate_noise(self):
-        return np.random.rand(1, 1000)
+        return np.random.rand(1,1000)
 
     @tf.function
-    def get_loss(self, real_output, fake_output):
+    def minmax_loss(self, real_output, fake_output):
         real_loss = self.cross_entropy(tf.ones_like(real_output), real_output)
         fake_loss = self.cross_entropy(tf.zeros_like(fake_output), fake_output)
-        discriminator_loss = real_loss + fake_loss
+        discriminator_loss = real_loss + fake_loss*1.5
 
         generator_loss = self.cross_entropy(tf.ones_like(fake_output), fake_output)
 
-        return generator_loss, discriminator_loss
+        return generator_loss*100, discriminator_loss*100
     
+    def wasserstein_loss(self, real_output, fake_ouptut):
+        return -fake_ouptut, (fake_ouptut-real_output)
+
+    def modefied_minmax_loss(self, real_output, fake_output):
+        real_loss = tf.math.log(real_output[0][0])
+        fake_loss = tf.math.log((1-fake_output[0][0]))
+        discriminator_loss = real_loss + fake_loss
+
+        generator_loss = -tf.math.log(fake_output)
+
+        return generator_loss, discriminator_loss
     
     def get_checkpoint(self):
         checkpoint_dir = './training_checkpoints'
@@ -59,38 +75,30 @@ class GAN(Model):
             discriminator_optimizer=self.discrim_opt
         )
         return checkpoint, checkpoint_prefix
-    
 
     def trainstep(self, real_texts, noises):
         generator_gradients = []
         discriminator_gradients = []
-
+        generated_texts = []
         for real_text, noise in zip(real_texts, noises):
             with tf.GradientTape() as tape1, tf.GradientTape() as tape2:
                 
                 fake_text = self.generator(noise, training=True)
 
-                #new_fake_text = []
-                #for token in fake_text:
-                #   dist = tfp.distributions.RelaxedOneHotCategorical(.00001, probs=token)
-                #    sample = dist.sample()
-                #    new_fake_text.append(sample)
-                #    print(new_fake_text)
-
-                #fake_text = new_fake_text
+                generated_texts.append(fake_text)
 
                 fake_text = tf.cast(fake_text, dtype=tf.float32)
                 fake_text = tf.reshape(fake_text, (1,self.encoder.sequence_maxlen, self.encoder.vocab_len))
-                
+                #fake_text += 0.05 * tf.random.uniform(tf.shape(fake_text))
 
-                real_text = [token for token in real_text[0][0]]
-                real_text = np.reshape(np.array(real_text), (1,self.encoder.sequence_maxlen, self.encoder.vocab_len))
-
+                real_text = real_text[0]
+                real_text = tf.reshape(real_text, (1,self.encoder.sequence_maxlen, self.encoder.vocab_len))
+                #real_text = 0.05 * tf.random.uniform(tf.shape(real_text))
 
                 fake_text_y = self.discriminator(fake_text, training=True)
                 real_text_y = self.discriminator(real_text, training=True)
 
-                generator_loss, discriminator_loss = self.get_loss(real_text_y, fake_text_y)
+                generator_loss, discriminator_loss = self.wasserstein_loss(real_text_y, fake_text_y)
 
             generator_gradients.append(tape1.gradient(generator_loss, self.generator.trainable_variables))
             discriminator_gradients.append(tape2.gradient(discriminator_loss, self.discriminator.trainable_variables))
@@ -99,7 +107,8 @@ class GAN(Model):
             self.gen_opt.apply_gradients(zip(g_grad, self.generator.trainable_variables))
             self.discrim_opt.apply_gradients(zip(d_grad, self.discriminator.trainable_variables))
         
-        return generator_loss, discriminator_loss
+        return generator_loss, discriminator_loss, generated_texts
+
 
     def train(self, text_data, noises, epochs, ckpt_freq=1000, print_freq=1, batch_size=32):
         for epoch in range(1, epochs+1):
@@ -110,11 +119,13 @@ class GAN(Model):
                 batch_data_num = 0
                 token_batch = []
                 noise_batch = []
-                if marker >= np.array(noises).shape[0]:
+                if marker >= np.array(noises).shape[0]-1:
                     break
 
                 while True:
                     if batch_data_num >= batch_size:
+                        break
+                    elif marker >= np.array(noises).shape[0]-1:
                         break
 
                     noise = np.expand_dims(noises[marker], axis=0)
@@ -131,16 +142,20 @@ class GAN(Model):
                     batch_data_num += 1
                     marker += 1
 
-                g_loss, d_loss = self.trainstep(token_batch, noise_batch)
+                g_loss, d_loss, generated_texts = self.trainstep(token_batch, noise_batch)
+                generated_text1 = self.encoder.decode(generated_texts[0])
+                generated_text2 = self.encoder.decode(generated_texts[1])
 
                 if int(marker/batch_size) % print_freq == 0:
-                    print(f"Epoch: {epoch} | Batch: {int(marker/batch_size)} | Time: {time.time()-start_time} | Generator loss: {g_loss} | Discriminator loss: {d_loss}")
+                    print(f"""Epoch: {epoch} | Batch: {int(marker/batch_size)} | Time: {time.time()-start_time}\n
+                        Generator loss: {g_loss} | Discriminator loss: {d_loss}\n
+                        Example text 1: {generated_text1}\n
+                        Example text 2: {generated_text2}\n"""
+                    )
 
                 if int(marker/batch_size) % ckpt_freq == 0:
                     self.ckpt.save(file_prefix=self.ckpt_prefix)
     
     def generate(self, x1):
         y = self.generator(x1)
-        y = tf.cast(y, tf.int64)
-        print(y)
         return self.encoder.decode(y)

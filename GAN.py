@@ -138,7 +138,7 @@ class GAN(Model):
                 fake_text_y = self.discriminator(fake_text, training=True)
                 real_text_y = self.discriminator(real_text, training=True)
 
-                generator_loss, discriminator_loss = self.minmax_loss(real_text_y, fake_text_y)
+                generator_loss, discriminator_loss = self.wasserstein_loss(real_text_y, fake_text_y)
 
             generator_gradients.append(tape1.gradient(generator_loss, self.generator.trainable_variables))
             discriminator_gradients.append(tape2.gradient(discriminator_loss, self.discriminator.trainable_variables))

@@ -1,3 +1,4 @@
+from pydoc import describe
 from typing import Container
 import tensorflow as tf
 from tensorflow import keras
@@ -16,7 +17,7 @@ import tensorflow_probability as tfp
 
 
 class Generator(Model):
-    def __init__(self, len_vocab, sequence_len):
+    def __init__(self, len_vocab, sequence_len, encoding_size=128):
         super(Generator, self).__init__()
 
         self.vocab_len = len_vocab
@@ -26,32 +27,19 @@ class Generator(Model):
         self.concat = Concatenate()
         
 
-        self.n1 = Dense(512, activation="relu")
-        self.n2 = Dense(256, activation="relu")
+        self.l1 = Dense(512, activation="relu")
+        self.l2 = Dense(256, activation="relu")
 
-        self.t1 = GRU(512, input_shape=(1, self.sequence_len, self.vocab_len), activation="sigmoid", return_sequences=True)
-        self.t2 = Dropout(0.2)
-        self.t3 = GRU(512, input_shape=(1, self.sequence_len, self.vocab_len), activation="sigmoid")
-        self.t4 = Dropout(0.2)
+        self.l3 = Dense(512, activation="relu")
+        self.l4 = Dense(512, activation="relu")
+        self.out = Dense(64, activation="relu")
 
-        self.fc1 = Dense(512, activation="elu")
-        self.fc2 = Dense(512, activation="elu")
-        self.out = Dense(self.vocab_len, activation="softmax")
+    def call(self, noise):
+        x = self.l1(noise)
+        x = self.l2(x)
 
-    def call(self, noise, tokens):
-        n = self.n1(noise)
-        n = self.n2(n)
-        n = self.flat(n)
-
-        t = self.t1(tokens)
-        t = self.t2(t)
-        t = self.t3(t)
-        t = self.t4(t)
-        t = self.flat(t)
-
-        x = self.concat([n, t])
-        x = self.fc1(x)
-        x = self.fc2(x)
+        x = self.l3(x)
+        x = self.l4(x)
         x = self.out(x)
         
         return x

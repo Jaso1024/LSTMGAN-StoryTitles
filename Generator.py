@@ -1,9 +1,11 @@
+from typing import Container
 import tensorflow as tf
 from tensorflow import keras
 from keras.models import Model
 from keras.optimizers import Adam
-from keras.layers import Dense, Concatenate, LSTM, Embedding, GRU, InputLayer, Flatten, Reshape
+from keras.layers import Dense, Concatenate, LSTM, Embedding, GRU, InputLayer, Flatten, Reshape, Conv2D, Dropout
 from tensorflow_text import BertTokenizer, WordpieceTokenizer
+from keras.activations import leaky_relu
 from keras.utils import pad_sequences
 from tensorflow.lookup import StaticVocabularyTable, KeyValueTensorInitializer
 import numpy as np
@@ -13,56 +15,6 @@ import time
 import tensorflow_probability as tfp
 
 
-class ArgmaxLayer(tf.keras.layers.Layer):
-    def __init__(self):
-      super(ArgmaxLayer, self).__init__()
-
-    def call(self, inputs):
-      return tf.argmax(inputs, axis=1)
-
-class RecurrentLayer(tf.keras.layers.Layer):
-    def __init__(self, sequence_len, vocab_len):
-        super(RecurrentLayer, self).__init__()
-
-        self.sequence_len = sequence_len
-        self.vocab_len = vocab_len
-
-        self.softmax = Dense(self.vocab_len, activation="softmax")
-        self.argmax = ArgmaxLayer()
-        self.concat = Concatenate()
-
-    def get_padding(self, iteration):
-        num_zeros = self.sequence_len - iteration
-        return [0] * num_zeros
-
-    def __call__(self, inputs):
-        outs = []
-        out_vals = []
-            
-        for idx in range(self.sequence_len):
-            padding = self.get_padding(idx)
-
-            if len(outs) >= 1:
-                outs_ = tf.cast(tf.reshape(outs, (1, len(outs))), dtype=tf.float32)
-                
-                padding = tf.cast(tf.reshape(padding, (1, len(padding))), dtype=tf.float32)
-
-                inp = self.concat([outs_, inputs, padding])
-            else:
-                padding = tf.cast(tf.reshape(padding, (1, len(padding))), dtype=tf.float32)
-
-                inp = self.concat([inputs, padding])
-
-            output = self.softmax(inp)
-            out_vals.append(output)
-            dist = tfp.distributions.RelaxedOneHotCategorical(0.1, probs=output)
-            sample = dist.sample()
-            
-            output = tf.compat.v1.distributions.Categorical(probs=sample, dtype=tf.float32)
-            outs.append(output.sample())
-
-        return out_vals
-
 class Generator(Model):
     def __init__(self, len_vocab, sequence_len):
         super(Generator, self).__init__()
@@ -71,35 +23,46 @@ class Generator(Model):
         self.sequence_len = sequence_len
 
         self.flat = Flatten()
+        self.concat = Concatenate()
         
 
-        self.l1 = Dense(256, activation="relu")
-        self.l2 = Dense(256, activation="relu")
-        
-        self.l3 = Dense(256, activation="relu")
-        self.l4 = Dense(256, activation="relu")
+        self.n1 = Dense(512, activation="relu")
+        self.n2 = Dense(256, activation="relu")
 
-        self.l5 = RecurrentLayer(self.sequence_len, self.vocab_len)
+        self.t1 = GRU(512, input_shape=(1, self.sequence_len, self.vocab_len), activation="sigmoid", return_sequences=True)
+        self.t2 = Dropout(0.2)
+        self.t3 = GRU(512, input_shape=(1, self.sequence_len, self.vocab_len), activation="sigmoid")
+        self.t4 = Dropout(0.2)
+
+        self.fc1 = Dense(512, activation="elu")
+        self.fc2 = Dense(512, activation="elu")
+        self.out = Dense(self.vocab_len, activation="softmax")
+
+    def call(self, noise, tokens):
+        n = self.n1(noise)
+        n = self.n2(n)
+        n = self.flat(n)
+
+        t = self.t1(tokens)
+        t = self.t2(t)
+        t = self.t3(t)
+        t = self.t4(t)
+        t = self.flat(t)
+
+        x = self.concat([n, t])
+        x = self.fc1(x)
+        x = self.fc2(x)
+        x = self.out(x)
         
+        return x
+    
+
     
     def get_padding(self, iteration):
         num_zeros = self.sequence_len - iteration
         return [0] * num_zeros
 
-    def call(self, noise):
 
-        x = self.l1(noise)
-        x = self.l2(x)
-        x = self.flat(x)
-
-
-    
-        x = self.l3(x)
-        x = self.l4(x)
-        x = self.l5(x)
-        
-        return x
-        
 
 if __name__ == "__main__":
 

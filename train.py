@@ -28,21 +28,24 @@ if __name__ == "__main__":
     print("Length of dataset: ", len(formatted_titles))
     gan = GAN(formatted_titles, 6, batch_size=2)
 
-    groups = np.array(categories)
+    gan.train_autoencoder(formatted_titles[100:], epochs=10)
+    gan.ae.save_weights("AutoEncoderWeights/aeWeights")
+    gan.test_autoencoder(formatted_titles[:100])
+
+
+    #groups = np.array(categories)
     noises = [gan.generate_noise() for _ in range(len(formatted_titles))]
     
     #checkpoint = tf.train.latest_checkpoint("training_checkpoints")
     #print(checkpoint)
     #gan.ckpt.restore(checkpoint)
 
+    #print("generating")
+    #test_noise = np.random.randint(low=0, high=1000, size=(1, 1, 1000))
+    #print(gan.generate(test_noise))
     
 
-    print("generating")
-    test_noise = np.random.randint(low=0, high=1000, size=(1, 1, 1000))
-    print(gan.generate(test_noise))
-    
-
-    gan.train(formatted_titles, noises, epochs=100, batch_size=2)
+    gan.train(formatted_titles, noises, epochs=100, batch_size=64)
 
 
     

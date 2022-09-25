@@ -12,7 +12,7 @@ from itertools import repeat
 import time
 
 class Encoder():
-    def __init__(self, text, maxlen) -> None:
+    def __init__(self, text, maxlen, truncate=1000) -> None:
         self.vocab = self.get_vocab(text)
         self.vocab_len = len(self.vocab)
         lookup_table = StaticVocabularyTable(
@@ -29,10 +29,14 @@ class Encoder():
         self.identity = np.identity(self.vocab_len)
 
     def get_vocab(self, text):
-        vocab = set()
+        vocab = dict()
         for title in text:
             for word in title.split(" "):
-                vocab.add(word)
+                if word in vocab.keys():
+                    vocab[word] += 1
+                else:
+                    vocab[word] = 1
+        
 
         return [" "]+list(vocab) 
     
@@ -63,6 +67,9 @@ class Encoder():
         return tokens
 
     def decode(self, tokens):
+        tokens = tf.argmax(tokens, axis=-1)
         tensor = self.tokenizer.detokenize([tokens])
-        print(tf.get_static_value(tensor[0][0]))
-        return " ".join([tf.get_static_value(word)[0].decode("utf-8") for word in tensor[0]])
+        try:
+            return " ".join([tf.get_static_value(word).decode("utf-8") for word in tensor[0][0]])
+        except TypeError:
+            return " ".join([tf.get_static_value(word).decode("utf-8") for word in tensor[0]])

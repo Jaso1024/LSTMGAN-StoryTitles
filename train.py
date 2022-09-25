@@ -26,7 +26,7 @@ if __name__ == "__main__":
         formatted_titles.append(title)
 
     print("Length of dataset: ", len(formatted_titles))
-    gan = GAN(formatted_titles, 10, batch_size=2)
+    gan = GAN(formatted_titles, 6, batch_size=2)
 
     groups = np.array(categories)
     noises = [gan.generate_noise() for _ in range(len(formatted_titles))]
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     print(gan.generate(test_noise))
     
 
-    gan.train(formatted_titles, noises, epochs=100, batch_size=32)
+    gan.train(formatted_titles, noises, epochs=100, batch_size=2)
 
 
     

@@ -20,8 +20,8 @@ class Discriminator(Model):
         
         self.flat = Flatten()
 
-        self.l1 = GRU(256, return_sequences=True, activation="sigmoid")
-        self.l3 = GRU(256, activation="sigmoid")
+        self.l1 = Dense(256, activation="relu")
+        self.l3 = Dense(256, activation="relu")
 
         self.l6 = Dense(256, activation="relu")
         self.l7 = Dense(1, activation="sigmoid")

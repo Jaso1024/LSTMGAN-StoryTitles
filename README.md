@@ -1,5 +1,5 @@
 # StoryTItles
-Generation of story titles through the combined use of Autoencoders, GANs and RNNs
+Generation of story titles through the combined use of Autoencoders and GANs 
 
 ## TODO
 - Finish Readme

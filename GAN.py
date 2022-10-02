@@ -98,13 +98,13 @@ class GAN(Model):
         data = pd.DataFrame({"data": formatted_data})
         data.to_pickle("FormattedData.pkl")
         
-    def train_autoencoder(self, text_data, epochs=100, verbose=1):
+    def train_autoencoder(self, text_data, epochs=100, verbose=1, batch_size=128):
         formatted_data = []
         for datapoint in text_data:
             x = self.encoder.encode(datapoint)
             formatted_data.append(x)
         formatted_data = np.reshape(formatted_data, (len(text_data),self.sequence_len,self.vocab_len))
-        self.ae.fit(formatted_data, formatted_data, epochs=epochs, verbose=verbose, batch_size=32)
+        self.ae.fit(formatted_data, formatted_data, epochs=epochs, verbose=verbose, batch_size=batch_size)
     
     def test_autoencoder(self, text_data, verbose=1):
         formatted_data = []

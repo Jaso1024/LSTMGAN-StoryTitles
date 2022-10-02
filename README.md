@@ -1,2 +1,4 @@
 # StoryTItles
- A project that uses a Generative Adversarial Model to generate story titles.
+Generation of story titles through the combined use of Autoencoders, GANs and RNNs
+
+## Model Structure

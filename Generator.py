@@ -4,7 +4,7 @@ import tensorflow as tf
 from tensorflow import keras
 from keras.models import Model
 from keras.optimizers import Adam
-from keras.layers import Dense, Concatenate, LSTM, Embedding, GRU, InputLayer, Flatten, Reshape, Conv2D, Dropout
+from keras.layers import Dense, Concatenate, LSTM, Embedding, GRU, InputLayer, Flatten, Reshape, Conv2D, Dropout, LeakyReLU
 from tensorflow_text import BertTokenizer, WordpieceTokenizer
 from keras.activations import leaky_relu
 from keras.utils import pad_sequences
@@ -27,19 +27,21 @@ class Generator(Model):
         self.concat = Concatenate()
         
 
-        self.l1 = Dense(512, activation="relu")
-        self.l2 = Dense(256, activation="relu")
-
-        self.l3 = Dense(512, activation="relu")
-        self.l4 = Dense(512, activation="relu")
-        self.out = Dense(64, activation="relu")
+        self.l1 = Dense(512, activation=None)
+        self.l2 = LeakyReLU(0.2)
+        self.l3 = Dense(512, activation=None)
+        self.l4 = LeakyReLU(0.3)
+        self.l5 = Dense(512, activation=None)
+        self.l6 = LeakyReLU(0.4)
+        self.out = Dense(encoding_size, activation="tanh")
 
     def call(self, noise):
         x = self.l1(noise)
         x = self.l2(x)
-
         x = self.l3(x)
         x = self.l4(x)
+        x = self.l5(x)
+        x = self.l6(x)
         x = self.out(x)
         
         return x

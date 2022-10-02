@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 from nltk.corpus import words
-
+     
 
 if __name__ == "__main__":
     data = pd.read_pickle("nosleep_data.pkl")
@@ -26,26 +26,26 @@ if __name__ == "__main__":
         formatted_titles.append(title)
 
     print("Length of dataset: ", len(formatted_titles))
-    gan = GAN(formatted_titles, 6, batch_size=2)
-
-    gan.train_autoencoder(formatted_titles[100:], epochs=10)
-    gan.ae.save_weights("AutoEncoderWeights/aeWeights")
-    gan.test_autoencoder(formatted_titles[:100])
-
+    gan = GAN(formatted_titles, 5, batch_size=32)
+    gan.ae.load_weights("AutoEncoderWeights/aeWeights")
+    #gan.save_encoded_data(formatted_titles)
+    #gan.train_autoencoder(formatted_titles, epochs=1000)
+    #gan.ae.save_weights("AutoEncoderWeights/aeWeights")
+    
 
     #groups = np.array(categories)
     noises = [gan.generate_noise() for _ in range(len(formatted_titles))]
     
-    #checkpoint = tf.train.latest_checkpoint("training_checkpoints")
-    #print(checkpoint)
-    #gan.ckpt.restore(checkpoint)
+    checkpoint = tf.train.latest_checkpoint("training_checkpoints")
+    print(checkpoint)
+    gan.ckpt.restore(checkpoint)
 
     #print("generating")
     #test_noise = np.random.randint(low=0, high=1000, size=(1, 1, 1000))
     #print(gan.generate(test_noise))
     
 
-    gan.train(formatted_titles, noises, epochs=100, batch_size=64)
+    gan.train(formatted_titles, noises, epochs=100, batch_size=32)
 
 
     

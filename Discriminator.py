@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 from keras.models import Model
 from keras.optimizers import Adam
-from keras.layers import Dense, Concatenate, LSTM, Embedding, GRU, InputLayer, Flatten, Reshape
+from keras.layers import Dense, Concatenate, LSTM, Embedding, GRU, InputLayer, Flatten, Reshape, LeakyReLU, BatchNormalization, Dropout
 from tensorflow_text import BertTokenizer, WordpieceTokenizer
 from keras.utils import pad_sequences
 from tensorflow.lookup import StaticVocabularyTable, KeyValueTensorInitializer
@@ -20,19 +20,28 @@ class Discriminator(Model):
         
         self.flat = Flatten()
 
-        self.l1 = Dense(256, activation="relu")
-        self.l3 = Dense(256, activation="relu")
-
-        self.l6 = Dense(256, activation="relu")
+        self.l1 = Dense(256, activation=None)
+        self.l2 = LeakyReLU(0.2)
+        self.d1 = Dropout(0.2)
+        self.l3 = Dense(256, activation=None)
+        self.l4 = LeakyReLU(0.2)
+        self.d2 = Dropout(0.2)
+        self.l5 = Dense(256, activation=None)
+        self.l6 = LeakyReLU(0.2)
+        self.d3 = Dropout(0.2)
         self.l7 = Dense(1, activation="sigmoid")
 
     def call(self, text):
         x = self.l1(text)
+        x = self.l2(x)
+        x = self.d1(x)
         x = self.l3(x)
-
+        x = self.l4(x)
+        x = self.d2(x)
         x = self.flat(x)
-
+        x = self.l5(x)
         x = self.l6(x)
+        x = self.d3(x)
         x = self.l7(x)
 
         return x

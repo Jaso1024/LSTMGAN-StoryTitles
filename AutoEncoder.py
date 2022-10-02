@@ -3,9 +3,8 @@ import tensorflow as tf
 from tensorflow import keras
 from keras.models import Model
 from keras.optimizers import Adam
-from keras.layers import Dense, Concatenate, LSTM, Embedding, GRU, InputLayer, Flatten, Reshape, Conv2D, Dropout, InputLayer
+from keras.layers import Dense, Concatenate, LSTM, Embedding, GRU, InputLayer, Flatten, Reshape, Conv2D, Dropout, InputLayer, LeakyReLU
 from tensorflow_text import BertTokenizer, WordpieceTokenizer
-from keras.activations import leaky_relu
 from keras.utils import pad_sequences
 from tensorflow.lookup import StaticVocabularyTable, KeyValueTensorInitializer
 import numpy as np
@@ -26,17 +25,23 @@ class AutoEncoder(Model):
 
         self.i = InputLayer((1, sequence_len, vocab_len))
         self.e1 = Flatten()
-        self.e2 = Dense(512, activation="relu")
-        self.e3 = Dense(256, activation="relu")
-        self.e4 = Dense(encoding_size, activation="relu")
+        self.e2 = Dense(512, activation=None)
+        self.e3 = LeakyReLU(0.2)
+        self.e4 = Dense(256, activation=None)
+        self.e5 = LeakyReLU(0.2)
+        self.e6 = Dense(encoding_size, activation="tanh")
         
 
-        self.d6 = Dense(vocab_len, activation="softmax")
-        self.d5 = Dense(256, activation="relu")
-        self.d4 = Dense(256, activation="relu")
-        self.d3 = Reshape((sequence_len, vocab_len))
-        self.d2 = Dense(sequence_len*vocab_len, activation="relu")
-        self.d1 = Dense(encoding_size, activation="relu")
+        self.d10 = Dense(vocab_len, activation="softmax")
+        self.d9 = LeakyReLU(0.2)
+        self.d8 = Dense(256, activation=None)
+        self.d7 = LeakyReLU(0.2)
+        self.d6 = Dense(256, activation=None)
+        self.d5 = Reshape((sequence_len, vocab_len))
+        self.d4 = LeakyReLU(0.2)
+        self.d3 = Dense(sequence_len*vocab_len, activation=None)
+        self.d2 = LeakyReLU(0.2)
+        self.d1 = Dense(encoding_size, activation=None)
 
         
 
@@ -51,6 +56,8 @@ class AutoEncoder(Model):
         x = self.e2(x)
         x = self.e3(x)
         x = self.e4(x)
+        x = self.e5(x)
+        x = self.e6(x)
 
         return x
     
@@ -61,6 +68,10 @@ class AutoEncoder(Model):
         x = self.d4(x)
         x = self.d5(x)
         x = self.d6(x)
+        x = self.d7(x)
+        x = self.d8(x)
+        x = self.d9(x)
+        x = self.d10(x)
 
         return x
     

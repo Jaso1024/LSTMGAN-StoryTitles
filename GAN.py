@@ -5,7 +5,7 @@ from msilib import sequence
 import tensorflow as tf
 from tensorflow import keras
 from keras.models import Model
-from keras.optimizers import Adam, RMSprop
+from keras.optimizers import Adam, RMSprop, SGD
 from keras.layers import Dense, Concatenate, LSTM, Embedding, GRU, InputLayer, Flatten, Reshape
 from tensorflow_text import BertTokenizer, WordpieceTokenizer
 from keras.utils import pad_sequences
@@ -16,6 +16,7 @@ from itertools import repeat
 import time
 import tensorflow_probability as tfp
 from multiprocessing import pool
+import pandas as pd
 
 from Encoder import Encoder
 from Generator import Generator
@@ -33,12 +34,13 @@ class GAN(Model):
         self.discriminator = Discriminator()
         self.ae = AutoEncoder(self.encoder.vocab_len, self.encoder.sequence_maxlen)
 
-        self.gen_opt = Adam(1e-5)
-        self.discrim_opt = Adam(1e-7)
+        self.gen_opt = Adam(1e-8)
+        self.discrim_opt = Adam(1e-8)
+        self.ae_opt = Adam(1e-4)
 
         self.generator.compile(optimizer=self.gen_opt)
         self.discriminator.compile(optimizer=self.discrim_opt)
-        self.ae.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+        self.ae.compile(optimizer=self.ae_opt, loss="categorical_crossentropy", metrics=["accuracy"])
 
         self.vocab_len = self.encoder.vocab_len
         self.sequence_len = self.encoder.sequence_maxlen
@@ -50,7 +52,7 @@ class GAN(Model):
         print("Vocab length", self.encoder.vocab_len)
 
     def generate_noise(self):
-        return np.random.rand(1,1000)
+        return np.random.normal(0, 0.3, 1000)
 
     @tf.function
     def minmax_loss(self, real_output, fake_output):
@@ -88,6 +90,14 @@ class GAN(Model):
         )
         return checkpoint, checkpoint_prefix
 
+    def save_encoded_data(self, text_data):
+        formatted_data = []
+        for datapoint in text_data:
+            x = self.encoder.encode(datapoint)
+            formatted_data.append(x)
+        data = pd.DataFrame({"data": formatted_data})
+        data.to_pickle("FormattedData.pkl")
+        
     def train_autoencoder(self, text_data, epochs=100, verbose=1):
         formatted_data = []
         for datapoint in text_data:
@@ -114,7 +124,7 @@ class GAN(Model):
             marker += 1
         return new_generator_text
             
-
+    @tf.function
     def trainstep(self, real_texts, noises):
         generator_gradients = []
         discriminator_gradients = []
@@ -138,7 +148,7 @@ class GAN(Model):
                 fake_text_y = self.discriminator(fake_text, training=True)
                 real_text_y = self.discriminator(real_text, training=True)
 
-                generator_loss, discriminator_loss = self.wasserstein_loss(real_text_y, fake_text_y)
+                generator_loss, discriminator_loss = self.minmax_loss(real_text_y, fake_text_y)
 
             generator_gradients.append(tape1.gradient(generator_loss, self.generator.trainable_variables))
             discriminator_gradients.append(tape2.gradient(discriminator_loss, self.discriminator.trainable_variables))
@@ -147,7 +157,7 @@ class GAN(Model):
             self.gen_opt.apply_gradients(zip(g_grad, self.generator.trainable_variables))
             self.discrim_opt.apply_gradients(zip(d_grad, self.discriminator.trainable_variables))
         
-        return generator_loss, discriminator_loss, generated_texts
+        return generator_loss, discriminator_loss, generated_texts, real_text, fake_text_y, real_text_y
        
     def format_tokens(self, tokens):
         new_tokens = np.zeros((self.sequence_len, self.sequence_len, self.vocab_len))
@@ -164,19 +174,19 @@ class GAN(Model):
     def train(self, text_data, noises, epochs, ckpt_freq=1000, print_freq=1, batch_size=32):
         for epoch in range(1, epochs+1):
             marker = 0
-
+            datalen = np.array(noises).shape[0]-1
             while True:
                 start_time = time.time()
                 batch_data_num = 0
                 token_batch = []
                 noise_batch = []
-                if marker >= np.array(noises).shape[0]-1:
+                if marker >= datalen:
                     break
 
                 while True:
                     if batch_data_num >= batch_size:
                         break
-                    elif marker >= np.array(noises).shape[0]-1:
+                    elif marker >= datalen:
                         break
 
                     noise = np.expand_dims(noises[marker], axis=0)
@@ -199,13 +209,16 @@ class GAN(Model):
 
 
 
-                g_loss, d_loss, generated_text = self.trainstep(token_batch, noise_batch)
+                g_loss, d_loss, generated_text, real_text, fy, ry = self.trainstep(token_batch, noise_batch)
                 generated_text = self.encoder.decode(generated_text)
+                real_text = self.encoder.decode(real_text)
 
                 if int(marker/batch_size) % print_freq == 0:
                     print(f"""Epoch: {epoch} | Batch: {int(marker/batch_size)} | Time: {time.time()-start_time}\n
                         Generator loss: {g_loss} | Discriminator loss: {d_loss}\n
-                        Example text 1: {generated_text}\n"""
+                        Example text 1: {generated_text}\n
+                        Real Example: {real_text}\n
+                        {fy} {ry}"""
                     )
 
                 if int(marker/batch_size) % ckpt_freq == 0:

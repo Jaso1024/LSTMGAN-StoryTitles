@@ -32,10 +32,6 @@ if __name__ == "__main__":
     
     noises = [gan.generate_noise() for _ in range(len(formatted_titles))]
     
-    checkpoint = tf.train.latest_checkpoint("training_checkpoints")
-    print(checkpoint)
-    gan.ckpt.restore(checkpoint)
-    
     gan.train(formatted_titles, noises, epochs=100, batch_size=32)
 
 

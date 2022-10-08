@@ -4,6 +4,8 @@ import numpy as np
 import tensorflow as tf
 from nltk.corpus import words
      
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 if __name__ == "__main__":
     data = pd.read_pickle("nosleep_data.pkl")
@@ -27,12 +29,20 @@ if __name__ == "__main__":
 
     print("Length of dataset: ", len(formatted_titles))
     gan = GAN(formatted_titles, 5, batch_size=32)
-    gan.train_autoencoder(formatted_titles, epochs=1000)
+    gan.ae.load_weights("AutoEncoderWeights/aeWeights")
+    #gan.save_encoded_data(formatted_titles)
+    gan.train_autoencoder(formatted_titles, epochs=1000, batch_size=16)
     gan.ae.save_weights("AutoEncoderWeights/aeWeights")
     
-    noises = [gan.generate_noise() for _ in range(len(formatted_titles))]
+
+    #groups = np.array(categories)
+    #noises = [gan.generate_noise() for _ in range(len(formatted_titles))]
     
-    gan.train(formatted_titles, noises, epochs=100, batch_size=32)
+    #checkpoint = tf.train.latest_checkpoint("training_checkpoints")
+    #print(checkpoint)
+    #gan.ckpt.restore(checkpoint)
+
+    #gan.train(formatted_titles, noises, epochs=100, batch_size=128)
 
 
     

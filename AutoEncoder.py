@@ -1,4 +1,5 @@
 
+
 import tensorflow as tf
 from tensorflow import keras
 from keras.models import Model
@@ -18,30 +19,25 @@ from nltk.corpus import words
 
 
 class AutoEncoder(Model):
-    def __init__(self, vocab_len, sequence_len, encoding_size=128):
+    def __init__(self, vocab_len, sequence_len, encoding_size=32):
         super(AutoEncoder, self).__init__()
 
         self.vocab_len = vocab_len
 
         self.i = InputLayer((1, sequence_len, vocab_len))
-        self.e1 = Flatten()
-        self.e2 = Dense(512, activation=None)
-        self.e3 = LeakyReLU(0.2)
-        self.e4 = Dense(256, activation=None)
-        self.e5 = LeakyReLU(0.2)
-        self.e6 = Dense(encoding_size, activation="tanh")
+        self.e1 = GRU(128, activation="sigmoid", return_sequences=True)
+        self.e2 = Dropout(0.2)
+        self.e3 = GRU(64, activation="sigmoid", return_sequences=True)
+        self.e4 = Dropout(0.2)
+        self.e5 = GRU(encoding_size, activation="sigmoid", return_sequences=True)
         
 
-        self.d10 = Dense(vocab_len, activation="softmax")
-        self.d9 = LeakyReLU(0.2)
-        self.d8 = Dense(256, activation=None)
-        self.d7 = LeakyReLU(0.2)
-        self.d6 = Dense(256, activation=None)
-        self.d5 = Reshape((sequence_len, vocab_len))
-        self.d4 = LeakyReLU(0.2)
-        self.d3 = Dense(sequence_len*vocab_len, activation=None)
-        self.d2 = LeakyReLU(0.2)
-        self.d1 = Dense(encoding_size, activation=None)
+        
+        self.d5 = Dense(vocab_len, activation="softmax")
+        self.d4 = Dropout(0.2)
+        self.d3 = GRU(64, activation="sigmoid", return_sequences=True)
+        self.d2 = Dropout(0.2)
+        self.d1 = GRU(encoding_size, activation="sigmoid", return_sequences=True)
 
         
 
@@ -57,7 +53,7 @@ class AutoEncoder(Model):
         x = self.e3(x)
         x = self.e4(x)
         x = self.e5(x)
-        x = self.e6(x)
+        
 
         return x
     
@@ -67,35 +63,10 @@ class AutoEncoder(Model):
         x = self.d3(x)
         x = self.d4(x)
         x = self.d5(x)
-        x = self.d6(x)
-        x = self.d7(x)
-        x = self.d8(x)
-        x = self.d9(x)
-        x = self.d10(x)
 
         return x
     
-if __name__ == "__main__":
-    e = AutoEncoder()
-    data = pd.read_pickle("nosleep_data.pkl")
-    categories = data.category.tolist()
-    titles = data.title.tolist()
-    formatted_titles = []
-    words = set(words.words())
-    for title in titles:
-        title = title.lower()
-        title = title.replace(".", "")
-        title = title.replace("?", "")
-        title = title.replace(")", "")
-        if len(title.split(" "))>25:
-            continue
-        elif len(title.split(" ")) < 3:
-            continue
-        elif not all(word in words for word in title.split(" ")):
-            continue
-            
-        formatted_titles.append(title)
-    
+
 
 
     

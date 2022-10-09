@@ -26,8 +26,6 @@ class Encoder():
         self.tokenizer = BertTokenizer(lookup_table)
 
         self.sequence_maxlen = maxlen
-        self.identity = np.identity(self.vocab_len)
-
     def get_vocab(self, text):
         vocab = dict()
         for title in text:
@@ -60,22 +58,26 @@ class Encoder():
         tokens = [token[0].numpy() for token in self.tokenizer.tokenize(text)[0]]
         tokens = np.array(tokens, dtype=np.float32)
         tokens = self.pad([tokens])
-        tokens = [self.identity[token] for token in tokens[0]]
         tokens = tf.expand_dims(tokens, axis=0)
+        tokens = tf.expand_dims(tokens, axis=-1)
         tokens = np.array(tokens, dtype=np.float32) # Must do this again to prevent tensorflow from removing 0s
         
         return tokens
 
     def decode(self, tokens):
-        tokens = tf.argmax(tokens, axis=-1)
+        tokens = np.array(tokens, dtype=np.int32)
         tensor = self.tokenizer.detokenize([tokens])
-        while len(tensor.shape) > 1:
+        while len(tensor.shape) > 2:
             tensor = tf.squeeze(tensor, axis=0)
 
         try:
-            return " ".join([tf.get_static_value(word).decode("utf-8") for word in tensor])
-        except TypeError:
             return " ".join([tf.get_static_value(word).decode("utf-8") for word in tensor[0]])
+        except TypeError:
+            try:
+                return " ".join([tf.get_static_value(word).decode("utf-8") for word in tensor[0]])
+            except AttributeError:
+                return " ".join([tf.get_static_value(word)[0].decode("utf-8") for word in tensor[0]])
+
         except AttributeError:
             return " ".join([tf.get_static_value(word)[0].decode("utf-8") for word in tensor[0][0]])
         except:

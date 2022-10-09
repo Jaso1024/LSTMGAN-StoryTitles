@@ -20,29 +20,23 @@ class Discriminator(Model):
         
         self.flat = Flatten()
 
-        self.l1 = Dense(256, activation=None)
-        self.l2 = LeakyReLU(0.2)
+        self.l1 = GRU(256, activation="sigmoid", return_sequences=True)
         self.d1 = Dropout(0.2)
-        self.l3 = Dense(256, activation=None)
-        self.l4 = LeakyReLU(0.2)
+        self.l2 = GRU(128, activation="sigmoid",return_sequences=True)
         self.d2 = Dropout(0.2)
-        self.l5 = Dense(256, activation=None)
-        self.l6 = LeakyReLU(0.2)
+        self.l3 = GRU(64, activation="relu",return_sequences=False)
         self.d3 = Dropout(0.2)
-        self.l7 = Dense(1, activation="sigmoid")
+        self.out = Dense(1, activation="sigmoid")
 
     def call(self, text):
         x = self.l1(text)
-        x = self.l2(x)
         x = self.d1(x)
-        x = self.l3(x)
-        x = self.l4(x)
+        x = self.l2(x)
         x = self.d2(x)
-        x = self.flat(x)
-        x = self.l5(x)
-        x = self.l6(x)
+        x = self.l3(x)
         x = self.d3(x)
-        x = self.l7(x)
+        x = self.flat(x)
+        x = self.out(x)
 
         return x
 

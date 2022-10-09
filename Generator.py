@@ -5,7 +5,6 @@ from keras.models import Model
 from keras.optimizers import Adam
 from keras.layers import Dense, Concatenate, LSTM, Embedding, GRU, InputLayer, Flatten, Reshape, Conv2D, Dropout, LeakyReLU
 from tensorflow_text import BertTokenizer, WordpieceTokenizer
-from keras.activations import leaky_relu
 from keras.utils import pad_sequences
 from tensorflow.lookup import StaticVocabularyTable, KeyValueTensorInitializer
 import numpy as np
@@ -15,7 +14,7 @@ import time
 
 
 class Generator(Model):
-    def __init__(self, len_vocab, sequence_len, encoding_size=128):
+    def __init__(self, len_vocab, sequence_len):
         super(Generator, self).__init__()
 
         self.vocab_len = len_vocab
@@ -25,22 +24,15 @@ class Generator(Model):
         self.concat = Concatenate()
         
 
-        self.l1 = Dense(512, activation=None)
-        self.l2 = LeakyReLU(0.2)
-        self.l3 = Dense(512, activation=None)
-        self.l4 = LeakyReLU(0.3)
-        self.l5 = Dense(512, activation=None)
-        self.l6 = LeakyReLU(0.4)
-        self.out = Dense(encoding_size, activation="tanh")
+        self.l1 = GRU(256, activation="sigmoid", return_sequences=True)
+        self.l2 = GRU(64, activation="sigmoid",return_sequences=True)
+        self.l3 = GRU(sequence_len, activation="sigmoid",return_sequences=False)
+
 
     def call(self, noise):
         x = self.l1(noise)
         x = self.l2(x)
         x = self.l3(x)
-        x = self.l4(x)
-        x = self.l5(x)
-        x = self.l6(x)
-        x = self.out(x)
         
         return x
     

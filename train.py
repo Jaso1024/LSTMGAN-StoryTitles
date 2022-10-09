@@ -3,18 +3,22 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 from nltk.corpus import words
-     
+import nltk
+
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 if __name__ == "__main__":
-    data = pd.read_pickle("nosleep_data.pkl")
+    data = pd.read_csv("nosleep_data.csv")
     categories = data.category.tolist()
     titles = data.title.tolist()
     formatted_titles = []
     words = set(words.words())
     for title in titles:
-        title = title.lower()
+        try:
+            title = title.lower()
+        except AttributeError:
+            continue
         title = title.replace(".", "")
         title = title.replace("?", "")
         title = title.replace(")", "")
@@ -29,9 +33,9 @@ if __name__ == "__main__":
 
     print("Length of dataset: ", len(formatted_titles))
     gan = GAN(formatted_titles, 5, batch_size=32)
-    gan.ae.load_weights("AutoEncoderWeights/aeWeights")
+    #gan.ae.load_weights("AutoEncoderWeights/aeWeights")
     #gan.save_encoded_data(formatted_titles)
-    gan.train_autoencoder(formatted_titles, epochs=1000, batch_size=16)
+    gan.train_autoencoder(formatted_titles, epochs=100000, batch_size=256)
     gan.ae.save_weights("AutoEncoderWeights/aeWeights")
     
 
@@ -43,6 +47,3 @@ if __name__ == "__main__":
     #gan.ckpt.restore(checkpoint)
 
     #gan.train(formatted_titles, noises, epochs=100, batch_size=128)
-
-
-    

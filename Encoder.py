@@ -69,10 +69,14 @@ class Encoder():
     def decode(self, tokens):
         tokens = tf.argmax(tokens, axis=-1)
         tensor = self.tokenizer.detokenize([tokens])
-        tensor = tf.squeeze(tensor, axis=0)
+        while len(tensor.shape) > 1:
+            tensor = tf.squeeze(tensor, axis=0)
+
         try:
-            return " ".join([tf.get_static_value(word).decode("utf-8") for word in tensor[0][0]])
+            return " ".join([tf.get_static_value(word).decode("utf-8") for word in tensor])
         except TypeError:
             return " ".join([tf.get_static_value(word).decode("utf-8") for word in tensor[0]])
         except AttributeError:
             return " ".join([tf.get_static_value(word)[0].decode("utf-8") for word in tensor[0][0]])
+        except:
+            return " ".join([tf.get_static_value(word).decode("utf-8") for word in tensor[0][0]])

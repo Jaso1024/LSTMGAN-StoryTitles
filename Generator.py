@@ -1,7 +1,6 @@
 from pydoc import describe
 from typing import Container
 import tensorflow as tf
-from tensorflow import keras
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.layers import Dense, Concatenate, LSTM, Embedding, GRU, InputLayer, Flatten, Reshape, Conv2D, Dropout, LeakyReLU
@@ -13,7 +12,6 @@ import numpy as np
 import os
 from itertools import repeat
 import time
-import tensorflow_probability as tfp
 
 
 class Generator(Model):

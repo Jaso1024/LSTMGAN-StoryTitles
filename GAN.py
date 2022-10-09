@@ -3,7 +3,6 @@ from cgitb import text
 from hashlib import new
 from msilib import sequence
 import tensorflow as tf
-from tensorflow import keras
 from keras.models import Model
 from keras.optimizers import Adam, RMSprop, SGD
 from keras.layers import Dense, Concatenate, LSTM, Embedding, GRU, InputLayer, Flatten, Reshape
@@ -12,9 +11,7 @@ from keras.utils import pad_sequences
 from tensorflow.lookup import StaticVocabularyTable, KeyValueTensorInitializer
 import numpy as np
 import os
-from itertools import repeat
 import time
-import tensorflow_probability as tfp
 from multiprocessing import pool
 import pandas as pd
 
@@ -22,6 +19,7 @@ from Encoder import Encoder
 from Generator import Generator
 from Discriminator import Discriminator
 from AutoEncoder import AutoEncoder
+
 
 
 
@@ -36,11 +34,10 @@ class GAN(Model):
 
         self.gen_opt = Adam(1e-6)
         self.discrim_opt = Adam(1e-6)
-        self.ae_opt = Adam(1e-4)
 
         self.generator.compile(optimizer=self.gen_opt)
         self.discriminator.compile(optimizer=self.discrim_opt)
-        self.ae.compile(optimizer=self.ae_opt, loss="categorical_crossentropy", metrics=["accuracy"])
+        self.ae.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
 
         self.vocab_len = self.encoder.vocab_len
         self.sequence_len = self.encoder.sequence_maxlen
@@ -99,12 +96,18 @@ class GAN(Model):
         data.to_pickle("FormattedData.pkl")
         
     def train_autoencoder(self, text_data, epochs=100, verbose=1, batch_size=128):
+        print("Training Autoencoder")
         formatted_data = [self.encoder.encode(datapoint) for datapoint in text_data]
-        print(0)
         formatted_data = np.reshape(formatted_data, (len(text_data),self.sequence_len,self.vocab_len))
         for epoch in range(epochs):
             self.ae.fit(formatted_data, formatted_data, epochs=1, verbose=verbose, batch_size=batch_size)
-            self.ae.save_weights("AutoEncoderWeights/aeWeights")
+            if epoch%10 ==0 and epoch>10:
+                idx = np.random.randint(low=0, high=len(formatted_data)-1)
+                dp = formatted_data[idx]
+                dp = np.reshape(dp, (1,5,8686))
+                sent = self.ae.predict(dp, verbose=0)
+                print("real text:", self.encoder.decode(formatted_data[idx]), "AE text:", self.encoder.decode(sent))
+                self.ae.save_weights("AutoEncoderWeights/aeWeights")
             
     
     def test_autoencoder(self, text_data, verbose=1):

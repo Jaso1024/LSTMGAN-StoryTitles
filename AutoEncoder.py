@@ -1,7 +1,6 @@
 
 
 import tensorflow as tf
-from tensorflow import keras
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.layers import Dense, Concatenate, LSTM, Embedding, GRU, InputLayer, Flatten, Reshape, Conv2D, Dropout, InputLayer, LeakyReLU
@@ -13,7 +12,6 @@ import os
 from itertools import repeat
 import time
 import pandas as pd
-import tensorflow_probability as tfp
 from nltk.corpus import words
 
 
@@ -29,15 +27,17 @@ class AutoEncoder(Model):
         self.e2 = Dropout(0.2)
         self.e3 = GRU(64, activation="sigmoid", return_sequences=True)
         self.e4 = Dropout(0.2)
-        self.e5 = GRU(encoding_size, activation="sigmoid", return_sequences=True)
+        self.e5 = GRU(encoding_size, activation="sigmoid", return_sequences=False)
         
 
         
-        self.d5 = Dense(vocab_len, activation="softmax")
+        self.d7 = Dense(vocab_len, activation="softmax")
+        self.d6 = Dropout(0.2)
+        self.d5 = GRU(64, activation="sigmoid", return_sequences=True)
         self.d4 = Dropout(0.2)
-        self.d3 = GRU(64, activation="sigmoid", return_sequences=True)
-        self.d2 = Dropout(0.2)
-        self.d1 = GRU(encoding_size, activation="sigmoid", return_sequences=True)
+        self.d3 = GRU(encoding_size, activation="sigmoid", return_sequences=True)
+        self.d2 = Reshape((sequence_len, vocab_len))
+        self.d1 = Dense(sequence_len*vocab_len, activation="relu")
 
         
 
@@ -63,6 +63,8 @@ class AutoEncoder(Model):
         x = self.d3(x)
         x = self.d4(x)
         x = self.d5(x)
+        x = self.d6(x)
+        x = self.d7(x)
 
         return x
     

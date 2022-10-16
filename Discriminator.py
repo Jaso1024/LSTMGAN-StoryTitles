@@ -20,12 +20,10 @@ class Discriminator(Model):
         
         self.flat = Flatten()
 
-        self.l1 = GRU(256, activation="sigmoid", return_sequences=True)
+        self.l1 = LSTM(256, activation="sigmoid", return_sequences=True, recurrent_dropout=0.3)
         self.d1 = Dropout(0.2)
-        self.l2 = GRU(128, activation="sigmoid",return_sequences=True)
+        self.l2 = LSTM(128, activation="sigmoid",return_sequences=True, recurrent_dropout=0.3)
         self.d2 = Dropout(0.2)
-        self.l3 = GRU(64, activation="relu",return_sequences=False)
-        self.d3 = Dropout(0.2)
         self.out = Dense(1, activation="sigmoid")
 
     def call(self, text):
@@ -33,8 +31,6 @@ class Discriminator(Model):
         x = self.d1(x)
         x = self.l2(x)
         x = self.d2(x)
-        x = self.l3(x)
-        x = self.d3(x)
         x = self.flat(x)
         x = self.out(x)
 

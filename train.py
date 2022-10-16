@@ -41,4 +41,4 @@ if __name__ == "__main__":
     print(checkpoint)
     gan.ckpt.restore(checkpoint)
 
-    gan.train(formatted_titles, noises, epochs=100, batch_size=32)
+    gan.train(formatted_titles, noises, epochs=100, batch_size=64)

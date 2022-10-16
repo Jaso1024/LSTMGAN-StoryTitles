@@ -14,7 +14,7 @@ import time
 
 
 class Generator(Model):
-    def __init__(self, len_vocab, sequence_len):
+    def __init__(self, len_vocab, sequence_len, noise_dim=5000):
         super(Generator, self).__init__()
 
         self.vocab_len = len_vocab
@@ -23,16 +23,18 @@ class Generator(Model):
         self.flat = Flatten()
         self.concat = Concatenate()
         
-
-        self.l1 = GRU(256, activation="sigmoid", return_sequences=True)
-        self.l2 = GRU(64, activation="sigmoid",return_sequences=True)
-        self.l3 = GRU(sequence_len, activation="sigmoid",return_sequences=False)
+        self.l1 = Reshape((sequence_len, int(noise_dim/sequence_len)))
+        self.l2 = LSTM(256, activation="relu", return_sequences=True)
+        self.l3 = GRU(sequence_len*10, activation="relu",return_sequences=False)
+        self.l4 = Dense(sequence_len, activation="relu")
+        
 
 
     def call(self, noise):
         x = self.l1(noise)
         x = self.l2(x)
         x = self.l3(x)
+        x = self.l4(x)
         
         return x
     

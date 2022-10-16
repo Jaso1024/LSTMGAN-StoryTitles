@@ -32,8 +32,8 @@ class GAN(Model):
         self.discriminator = Discriminator()
         self.ae = AutoEncoder(self.encoder.vocab_len, self.encoder.sequence_maxlen)
 
-        self.gen_opt = Adam(1e-4)
-        self.discrim_opt = Adam(1e-4)
+        self.gen_opt = Adam(3e-5)
+        self.discrim_opt = Adam(2e-6)
 
         self.generator.compile(optimizer=self.gen_opt)
         self.discriminator.compile(optimizer=self.discrim_opt)
@@ -49,7 +49,7 @@ class GAN(Model):
         print("Vocab length", self.encoder.vocab_len)
 
     def generate_noise(self):
-        return np.random.normal(0, 0.3, 5000)
+        return np.random.normal(0, 0.3, 5000) * self.vocab_len
 
     @tf.function
     def minmax_loss(self, real_output, fake_output):
@@ -59,10 +59,10 @@ class GAN(Model):
 
         generator_loss = self.cross_entropy(tf.ones_like(fake_output), fake_output)
 
-        return generator_loss, discriminator_loss
+        return generator_loss*100, discriminator_loss*100
     
     def wasserstein_loss(self, real_output, fake_ouptut):
-        return -fake_ouptut, (fake_ouptut-real_output)
+        return -fake_ouptut*100, (fake_ouptut-real_output)*100
 
     def modefied_minmax_loss(self, real_output, fake_output):
         real_loss = tf.math.log(real_output[0][0])
@@ -129,7 +129,7 @@ class GAN(Model):
         return new_generator_text
 
     @tf.function(jit_compile=True)    
-    def trainstep(self, real_texts, noises, batch_size):
+    def trainstep(self, real_texts, noises, batch_size, gen_updates=1, discrim_updates=0):
         generator_gradients = []
         discriminator_gradients = []
         generated_texts = []
@@ -138,7 +138,7 @@ class GAN(Model):
                 
                 fake_text = self.generator(noise, training=True)
                 fake_text = tf.cast(fake_text, dtype=tf.float32)
-                fake_text *= self.vocab_len
+                #fake_text *= self.vocab_len
                 generated_texts.append(fake_text)
                 
                 fake_text = tf.reshape(fake_text, (1,self.encoder.sequence_maxlen, 1))
@@ -166,8 +166,11 @@ class GAN(Model):
         generator_gradient = [gen_grad/batch_size for gen_grad in generator_gradient]
         discriminator_gradient = [dis_grad/batch_size for dis_grad in discriminator_gradient]
 
-        self.gen_opt.apply_gradients(zip(generator_gradient, self.generator.trainable_variables))
-        self.discrim_opt.apply_gradients(zip(discriminator_gradient, self.discriminator.trainable_variables))
+        for _ in range(gen_updates):
+            self.gen_opt.apply_gradients(zip(generator_gradient, self.generator.trainable_variables))
+        
+        for _ in range(discrim_updates):
+            self.discrim_opt.apply_gradients(zip(discriminator_gradient, self.discriminator.trainable_variables))
         
         return generator_loss, discriminator_loss, generated_texts, real_text, fake_text_y, real_text_y
        
@@ -183,7 +186,7 @@ class GAN(Model):
                 
         
 
-    def train(self, text_data, noises, epochs, ckpt_freq=100, print_freq=1, batch_size=32):
+    def train(self, text_data, noises, epochs, ckpt_freq=500, print_freq=1, batch_size=32):
         for epoch in range(1, epochs+1):
             marker = 0
             datalen = np.array(noises).shape[0]-1
@@ -218,8 +221,8 @@ class GAN(Model):
                     marker += 1
 
                 g_loss, d_loss, generated_text, real_text, fy, ry = self.trainstep(token_batch, noise_batch, batch_size)
-                print(x=0)
-                generated_text = self.encoder.decode(generated_text[0])
+                generated_text = tf.reshape(generated_text[0], (1, 1, self.sequence_len))
+                generated_text = self.encoder.decode(generated_text)
                 real_text = tf.reshape(real_text, (1, 1, self.sequence_len))
                 real_text = self.encoder.decode(real_text)
 

@@ -1,4 +1,4 @@
-# Generative Adversarial LSTM (GALSTM) Story Title Generator
+# Generative Adversarial LSTMs for Story Title Generation
 
 This project aims to generate creative and captivating story titles using a combination of Generative Adversarial Networks (GANs) and Long Short-Term Memory (LSTM) models. The generator is trained on a dataset of existing story titles, while the discriminator is trained to distinguish between generated titles and real ones. Through this adversarial process, the generator learns to produce more realistic and diverse titles.
 
